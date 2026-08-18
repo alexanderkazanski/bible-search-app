@@ -5,6 +5,8 @@ import type { BibleData } from '../types/bible';
 
 interface BibleReaderProps {
   bibleData: BibleData;
+  currentBook: string;
+  currentChapter: string;
 }
 
 const BibleReaderContainer = styled.div`
@@ -77,6 +79,7 @@ const Verse = styled.div`
   padding: 0.5rem;
   border-radius: 8px;
   transition: background 0.3s ease;
+  position: relative;
   
   &:hover {
     background: rgba(255, 215, 0, 0.1);
@@ -108,6 +111,37 @@ const VerseText = styled.span`
   flex: 1;
 `;
 
+const SaveButton = styled.button<{ isSaved: boolean }>`
+  background: ${props => props.isSaved 
+    ? 'linear-gradient(135deg, #ffd700 0%, #ffb347 100%)' 
+    : 'rgba(255, 255, 255, 0.8)'};
+  border: 2px solid ${props => props.isSaved ? '#ffd700' : 'rgba(255, 215, 0, 0.3)'};
+  border-radius: 50%;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-left: 0.5rem;
+  flex-shrink: 0;
+  color: ${props => props.isSaved ? '#1a0a2e' : '#ffd700'};
+  font-size: 1rem;
+  box-shadow: ${props => props.isSaved 
+    ? '0 2px 8px rgba(255, 215, 0, 0.4)' 
+    : '0 2px 4px rgba(0, 0, 0, 0.1)'};
+  
+  &:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+`;
+
 const EmptyState = styled.div`
   display: flex;
   align-items: center;
@@ -119,11 +153,35 @@ const EmptyState = styled.div`
   font-style: italic;
 `;
 
-export const BibleReader: React.FC<BibleReaderProps> = ({ bibleData }) => {
-  const { currentBook, currentChapter } = useBibleStore();
+export const BibleReader: React.FC<BibleReaderProps> = ({ bibleData, currentBook, currentChapter }) => {
+  const { savedVerses, addSavedVerse, removeSavedVerse } = useBibleStore();
   
   const bookData = bibleData.booksData[currentBook];
   const chapterData = bookData?.chapters.find(ch => ch.chapter === currentChapter);
+
+  const isVerseSaved = (verseNum: string) => {
+    return savedVerses.some(
+      v => v.book === currentBook && v.chapter === currentChapter && v.verse === verseNum
+    );
+  };
+
+  const handleSaveVerse = (verseNum: string, text: string) => {
+    if (isVerseSaved(verseNum)) {
+      const verseToRemove = savedVerses.find(
+        v => v.book === currentBook && v.chapter === currentChapter && v.verse === verseNum
+      );
+      if (verseToRemove) {
+        removeSavedVerse(verseToRemove.id);
+      }
+    } else {
+      addSavedVerse({
+        book: currentBook,
+        chapter: currentChapter,
+        verse: verseNum,
+        text: text,
+      });
+    }
+  };
 
   if (!chapterData) {
     return (
@@ -145,6 +203,13 @@ export const BibleReader: React.FC<BibleReaderProps> = ({ bibleData }) => {
           <Verse key={verse.verse}>
             <VerseNumber>{verse.verse}</VerseNumber>
             <VerseText>{verse.text}</VerseText>
+            <SaveButton
+              isSaved={isVerseSaved(verse.verse)}
+              onClick={() => handleSaveVerse(verse.verse, verse.text)}
+              title={isVerseSaved(verse.verse) ? 'Remove from saved' : 'Save verse'}
+            >
+              {isVerseSaved(verse.verse) ? '♥' : '♡'}
+            </SaveButton>
           </Verse>
         ))}
       </VersesContainer>

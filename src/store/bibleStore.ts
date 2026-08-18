@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { SearchFilters, SearchResult } from '../types/bible';
+import type { SearchFilters, SearchResult, SavedVerse } from '../types/bible';
 
 interface BibleStore {
   // Navigation state
@@ -20,6 +20,14 @@ interface BibleStore {
   // UI state
   showSearchPanel: boolean;
   setShowSearchPanel: (show: boolean) => void;
+  showSavedVerses: boolean;
+  setShowSavedVerses: (show: boolean) => void;
+  
+  // Saved verses state
+  savedVerses: SavedVerse[];
+  addSavedVerse: (verse: Omit<SavedVerse, 'id' | 'savedAt'>) => void;
+  removeSavedVerse: (id: string) => void;
+  loadSavedVerses: () => void;
 }
 
 const initialSearchFilters: SearchFilters = {
@@ -55,4 +63,30 @@ export const useBibleStore = create<BibleStore>((set) => ({
   // UI state
   showSearchPanel: false,
   setShowSearchPanel: (show) => set({ showSearchPanel: show }),
+  showSavedVerses: false,
+  setShowSavedVerses: (show) => set({ showSavedVerses: show }),
+  
+  // Saved verses state
+  savedVerses: [],
+  addSavedVerse: (verse) => set((state) => {
+    const newVerse: SavedVerse = {
+      ...verse,
+      id: `${verse.book}-${verse.chapter}-${verse.verse}-${Date.now()}`,
+      savedAt: new Date().toISOString(),
+    };
+    const updated = [...state.savedVerses, newVerse];
+    localStorage.setItem('savedVerses', JSON.stringify(updated));
+    return { savedVerses: updated };
+  }),
+  removeSavedVerse: (id) => set((state) => {
+    const updated = state.savedVerses.filter(v => v.id !== id);
+    localStorage.setItem('savedVerses', JSON.stringify(updated));
+    return { savedVerses: updated };
+  }),
+  loadSavedVerses: () => {
+    const saved = localStorage.getItem('savedVerses');
+    if (saved) {
+      set({ savedVerses: JSON.parse(saved) });
+    }
+  },
 }));

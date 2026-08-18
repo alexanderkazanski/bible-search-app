@@ -40,3 +40,12 @@ export interface NavigationState {
   currentChapter: string;
   currentVerse: string;
 }
+
+export interface SavedVerse {
+  id: string;
+  book: string;
+  chapter: string;
+  verse: string;
+  text: string;
+  savedAt: string;
+}

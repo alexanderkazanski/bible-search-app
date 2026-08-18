@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
 import { useBibleStore } from './store/bibleStore';
 import { BookSelector } from './components/BookSelector';
@@ -6,6 +6,7 @@ import { ChapterSelector } from './components/ChapterSelector';
 import { BibleReader } from './components/BibleReader';
 import { SearchPanel } from './components/SearchPanel';
 import { SearchResults } from './components/SearchResults';
+import { SavedVerses } from './components/SavedVerses';
 import { searchBible } from './utils/bibleSearch';
 import bibleData from './data/bible-data.json';
 import type { BibleData } from './types/bible';
@@ -221,6 +222,44 @@ const FilterButton = styled.button`
   }
 `;
 
+const SavedVersesButton = styled.button`
+  background: linear-gradient(135deg, #9333ea 0%, #dc2626 100%);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  font-size: 0.75rem;
+  cursor: pointer;
+  box-shadow: 
+    0 4px 12px rgba(147, 51, 234, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-right: 0.5rem;
+  
+  @media (min-width: 768px) {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    gap: 0.5rem;
+    margin-right: 0.75rem;
+  }
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+      0 6px 16px rgba(147, 51, 234, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
 const MainLayout = styled.div`
   display: flex;
   max-width: 80rem;
@@ -313,6 +352,19 @@ const SearchPanelContainer = styled.aside<{ isOpen: boolean }>`
   }
 `;
 
+const SavedVersesPanelContainer = styled.aside<{ isOpen: boolean }>`
+  display: ${props => props.isOpen ? 'block' : 'none'};
+  width: 100%;
+  background: linear-gradient(180deg, rgba(26, 10, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
+  border-right: 2px solid rgba(255, 215, 0, 0.2);
+  backdrop-filter: blur(10px);
+  flex-shrink: 0;
+  
+  @media (min-width: 1024px) {
+    width: 24rem;
+  }
+`;
+
 const MainContent = styled.main`
   flex: 1;
   padding: 1rem;
@@ -354,17 +406,28 @@ function App() {
   const {
     showSearchPanel,
     setShowSearchPanel,
+    showSavedVerses,
+    setShowSavedVerses,
     searchFilters,
     setSearchFilters,
     setSearchResults,
     setIsSearching,
     searchResults,
+    currentBook,
+    currentChapter,
+    loadSavedVerses,
   } = useBibleStore();
 
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
+  // Load saved verses on mount
+  useEffect(() => {
+    loadSavedVerses();
+  }, [loadSavedVerses]);
+
   const handleSearch = () => {
     setIsSearching(true);
+    setShowSavedVerses(false);
     // Small delay to allow UI to update
     setTimeout(() => {
       const results = searchBible(typedBibleData, searchFilters);
@@ -405,7 +468,18 @@ function App() {
               />
             </SearchForm>
             
-            <FilterButton onClick={() => setShowSearchPanel(!showSearchPanel)}>
+            <SavedVersesButton onClick={() => {
+              setShowSavedVerses(!showSavedVerses);
+              if (showSearchPanel) setShowSearchPanel(false);
+            }}>
+              <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            </SavedVersesButton>
+            <FilterButton onClick={() => {
+              setShowSearchPanel(!showSearchPanel);
+              if (showSavedVerses) setShowSavedVerses(false);
+            }}>
               <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
               </svg>
@@ -444,9 +518,13 @@ function App() {
             {searchResults.length > 0 && <SearchResults />}
           </SearchPanelContainer>
 
+          <SavedVersesPanelContainer isOpen={showSavedVerses}>
+            <SavedVerses />
+          </SavedVersesPanelContainer>
+
           <MainContent>
             <ContentCard>
-              <BibleReader bibleData={typedBibleData} />
+              <BibleReader bibleData={typedBibleData} currentBook={currentBook} currentChapter={currentChapter} />
             </ContentCard>
           </MainContent>
         </MainLayout>
