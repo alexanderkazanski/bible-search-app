@@ -7,7 +7,7 @@ import { BibleReader } from './components/BibleReader';
 import { SearchPanel } from './components/SearchPanel';
 import { SearchResults } from './components/SearchResults';
 import { SavedVerses } from './components/SavedVerses';
-import { searchBible } from './utils/bibleSearch';
+import { searchBible, quickSearch } from './utils/bibleSearch';
 import bibleData from './data/bible-data.json';
 import type { BibleData } from './types/bible';
 
@@ -439,8 +439,14 @@ function App() {
   // Handle quick search from header
   const handleQuickSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    handleSearch();
-    setShowSearchPanel(true);
+    setIsSearching(true);
+    setShowSavedVerses(false);
+    setTimeout(() => {
+      const results = quickSearch(typedBibleData, searchFilters.searchText);
+      setSearchResults(results);
+      setIsSearching(false);
+      setShowSearchPanel(true);
+    }, 100);
   };
 
   return (

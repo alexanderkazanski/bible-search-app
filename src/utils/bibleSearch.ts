@@ -31,10 +31,10 @@ export const searchBible = (bibleData: BibleData, filters: SearchFilters): Searc
 
         // Check text search
         if (searchText.trim()) {
-          const searchLower = searchText.toLowerCase();
+          const terms = searchText.toLowerCase().trim().split(/\s+/).filter(Boolean);
           const textLower = verse.text.toLowerCase();
           
-          if (!textLower.includes(searchLower)) return;
+          if (!terms.some(term => textLower.includes(term))) return;
         }
 
         // If all filters pass, add to results
@@ -52,10 +52,40 @@ export const searchBible = (bibleData: BibleData, filters: SearchFilters): Searc
   return results;
 };
 
+export const quickSearch = (bibleData: BibleData, query: string): SearchResult[] => {
+  const results: SearchResult[] = [];
+  const q = query.toLowerCase().trim();
+  if (!q) return results;
+
+  bibleData.books.forEach(bookName => {
+    const bookData = bibleData.booksData[bookName];
+    if (!bookData) return;
+
+    bookData.chapters.forEach(chapter => {
+      chapter.verses.forEach(verse => {
+        if (verse.text.toLowerCase().includes(q)) {
+          results.push({
+            book: bookName,
+            chapter: chapter.chapter,
+            verse: verse.verse,
+            text: verse.text,
+            bookName: bookName,
+          });
+        }
+      });
+    });
+  });
+
+  return results;
+};
+
 export const highlightSearchTerm = (text: string, searchTerm: string): string => {
   if (!searchTerm.trim()) return text;
   
-  const regex = new RegExp(`(${escapeRegExp(searchTerm)})`, 'gi');
+  const terms = searchTerm.trim().split(/\s+/).filter(Boolean).map(escapeRegExp).join('|');
+  if (!terms) return text;
+  
+  const regex = new RegExp(`(${terms})`, 'gi');
   return text.replace(regex, '<mark>$1</mark>');
 };
 
