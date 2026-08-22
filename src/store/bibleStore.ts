@@ -48,6 +48,7 @@ export const useBibleStore = create<BibleStore>((set) => ({
   navigateToVerse: (book, chapter) => set({ 
     currentBook: book, 
     currentChapter: chapter,
+    showSearchPanel: false,
   }),
   
   // Search state

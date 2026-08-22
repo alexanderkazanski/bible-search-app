@@ -4,14 +4,10 @@ import { useBibleStore } from './store/bibleStore';
 import { BookSelector } from './components/BookSelector';
 import { ChapterSelector } from './components/ChapterSelector';
 import { BibleReader } from './components/BibleReader';
-import { SearchPanel } from './components/SearchPanel';
 import { SearchResults } from './components/SearchResults';
 import { SavedVerses } from './components/SavedVerses';
-import { searchBible, quickSearch } from './utils/bibleSearch';
-import bibleData from './data/bible-data.json';
-import type { BibleData } from './types/bible';
-
-const typedBibleData = bibleData as BibleData;
+import { quickSearch } from './utils/bibleSearch';
+import { useBibleData } from './hooks/useBibleData';
 
 const GlobalStyle = createGlobalStyle`
   @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
@@ -127,7 +123,7 @@ const Title = styled.h1`
   }
 `;
 
-const KJVBadge = styled.span`
+const VersionSelect = styled.select`
   font-family: 'Cinzel', serif;
   font-size: 0.75rem;
   color: #ffd700;
@@ -136,10 +132,23 @@ const KJVBadge = styled.span`
   border-radius: 20px;
   border: 2px solid rgba(255, 215, 0, 0.3);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+  cursor: pointer;
   
   @media (min-width: 768px) {
     font-size: 0.875rem;
     padding: 0.5rem 1rem;
+  }
+
+  &:hover {
+    border-color: rgba(255, 215, 0, 0.6);
+  }
+
+  option {
+    color: #1a0a2e;
+    background: #ffd700;
   }
 `;
 
@@ -186,41 +195,6 @@ const SearchInput = styled.input`
   }
 `;
 
-const FilterButton = styled.button`
-  background: linear-gradient(135deg, #ffd700 0%, #ffb347 100%);
-  color: #1a0a2e;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  font-family: 'Cinzel', serif;
-  font-weight: 600;
-  font-size: 0.75rem;
-  cursor: pointer;
-  box-shadow: 
-    0 4px 12px rgba(255, 215, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  
-  @media (min-width: 768px) {
-    padding: 0.75rem 1.5rem;
-    font-size: 0.875rem;
-    gap: 0.5rem;
-  }
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 
-      0 6px 16px rgba(255, 215, 0, 0.5),
-      inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  }
-  
-  &:active {
-    transform: translateY(0);
-  }
-`;
 
 const SavedVersesButton = styled.button`
   background: linear-gradient(135deg, #9333ea 0%, #dc2626 100%);
@@ -412,29 +386,29 @@ function App() {
     setSearchFilters,
     setSearchResults,
     setIsSearching,
-    searchResults,
     currentBook,
     currentChapter,
+    setCurrentBook,
+    setCurrentChapter,
     loadSavedVerses,
   } = useBibleStore();
 
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const { bibleData, isLoading, version, setVersion, versions } = useBibleData();
 
   // Load saved verses on mount
   useEffect(() => {
     loadSavedVerses();
   }, [loadSavedVerses]);
 
-  const handleSearch = () => {
-    setIsSearching(true);
-    setShowSavedVerses(false);
-    // Small delay to allow UI to update
-    setTimeout(() => {
-      const results = searchBible(typedBibleData, searchFilters);
-      setSearchResults(results);
-      setIsSearching(false);
-    }, 100);
-  };
+  if (isLoading || !bibleData) {
+    return (
+      <AppContainer style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Title>Loading Bible…</Title>
+      </AppContainer>
+    );
+  }
+
 
   // Handle quick search from header
   const handleQuickSearch = (e: React.FormEvent) => {
@@ -442,7 +416,8 @@ function App() {
     setIsSearching(true);
     setShowSavedVerses(false);
     setTimeout(() => {
-      const results = quickSearch(typedBibleData, searchFilters.searchText);
+      if (!bibleData) return;
+      const results = quickSearch(bibleData, searchFilters.searchText);
       setSearchResults(results);
       setIsSearching(false);
       setShowSearchPanel(true);
@@ -462,7 +437,11 @@ function App() {
                 </svg>
               </MobileMenuButton>
               <Title>Bible Search</Title>
-              <KJVBadge>KJV</KJVBadge>
+              <VersionSelect value={version} onChange={(e) => { setVersion(e.target.value); setCurrentBook('Genesis'); setCurrentChapter('1'); }}>
+                {versions.map((v) => (
+                  <option key={v.id} value={v.id}>{v.label}</option>
+                ))}
+              </VersionSelect>
             </LogoSection>
             
             <SearchForm onSubmit={handleQuickSearch}>
@@ -482,15 +461,6 @@ function App() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             </SavedVersesButton>
-            <FilterButton onClick={() => {
-              setShowSearchPanel(!showSearchPanel);
-              if (showSavedVerses) setShowSavedVerses(false);
-            }}>
-              <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
-              {showSearchPanel ? 'Close' : 'Filters'}
-            </FilterButton>
           </HeaderContent>
         </Header>
 
@@ -505,23 +475,22 @@ function App() {
                   </svg>
                 </CloseButton>
               </NavHeader>
-              <BookSelector books={typedBibleData.books} />
+              <BookSelector books={bibleData.books} />
               <div style={{ marginTop: '1.5rem' }}>
-                <ChapterSelector bibleData={typedBibleData} />
+                <ChapterSelector bibleData={bibleData} />
               </div>
             </MobileNavContent>
           </MobileNavOverlay>
 
           <Sidebar>
-            <BookSelector books={typedBibleData.books} />
+            <BookSelector books={bibleData.books} />
             <div style={{ marginTop: '1.5rem' }}>
-              <ChapterSelector bibleData={typedBibleData} />
+              <ChapterSelector bibleData={bibleData} />
             </div>
           </Sidebar>
 
           <SearchPanelContainer isOpen={showSearchPanel}>
-            <SearchPanel bibleData={typedBibleData} onSearch={handleSearch} />
-            {searchResults.length > 0 && <SearchResults />}
+            <SearchResults />
           </SearchPanelContainer>
 
           <SavedVersesPanelContainer isOpen={showSavedVerses}>
@@ -530,7 +499,7 @@ function App() {
 
           <MainContent>
             <ContentCard>
-              <BibleReader bibleData={typedBibleData} currentBook={currentBook} currentChapter={currentChapter} />
+              <BibleReader bibleData={bibleData} currentBook={currentBook} currentChapter={currentChapter} />
             </ContentCard>
           </MainContent>
         </MainLayout>
